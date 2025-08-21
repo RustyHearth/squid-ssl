@@ -91,12 +91,26 @@ cd ./squid
 make
 make install
 
-chmo 4755 /usr/lib/squid/pinger
+chmod 4755 /usr/lib/squid/pinger
 chown -R proxy:proxy /var/log/squid
 
+sed -i 's/\/var\/cache\/squid/\/var\/spool\/squid/g' /etc/squid/squid.conf
 sed -i '/cache_dir/s/^#//g' /etc/squid/squid.conf
 chown proxy:proxy /var/spool/squid
 chown -R proxy:proxy /var/log/squid
 
-cp ./usr.sbin.squid /etc/apparmor.d/
+mkdir /etc/squid/conf.d
+touch /etc/squid/conf.d/debian.conf
+echo "" >>/etc/squid/squid.conf
+echo "include /etc/squid/conf.d/*.conf" >>/etc/squid/squid.conf
+
+cp ../usr.sbin.squid /etc/apparmor.d/
 touch /etc/apparmor.d/local/usr.sbin.squid
+apparmor_parser -r /etc/apparmor.d/usr.sbin.squid
+
+cp ../squid-init /etc/init.d/squid
+update-rc.d squid defaults
+
+cp ../squid.service /etc/systemd/system/
+cp ../ssl-cert.service /etc/systemd/system/
+systemctl daemon-reload
