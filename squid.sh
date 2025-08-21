@@ -35,6 +35,7 @@ apt install -y init-system-helpers \
   libcom-err2 \
   libcrypt1 \
   libecap3 \
+  libecap3-dev \
   libexpat1 \
   libgcc-s1 \
   libgnutls30t64 \
@@ -48,6 +49,7 @@ apt install -y init-system-helpers \
   libsasl2-2 \
   libstdc++6 \
   libsystemd0 \
+  libsystemd-dev \
   libtdb1 \
   libxml2 \
   netbase \
@@ -79,15 +81,29 @@ cd ./squid
   --sysconfdir=/etc/squid \
   --with-default-user=proxy \
   --with-logdir=/var/log/squid \
-  --with-swapdir=/var/spool/squid \
   --with-pidfile=/run/squid.pid \
   --enable-ssl \
+  --enable-ssl-crtd \
   --enable-security-file-certgen \
   --enable-icap-client \
+  --enable-ecap \
   --enable-http-violations \
   --with-openssl \
   --enable-linux-netfilter \
-  --enable-icmp
+  --enable-icmp \
+  --enable-storeio=ufs,aufs,diskd,rock \
+  --build=x86_64-linux-gnu \
+  --includedir=${prefix}/include \
+  --mandir=${prefix}/share/man \
+  --infodir=${prefix}/share/info \
+  --disable-arch-native \
+  --enable-eui \
+  --enable-esi \
+  --runstatedir=/run \
+  --with-systemd \
+  --enable-follow-x-forwarded-for \
+  BUILDCXX=g++
+
 make
 make install
 
