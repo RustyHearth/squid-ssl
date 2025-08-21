@@ -10,10 +10,10 @@ if [[ $1 != "http"* ]]; then
   exit 1
 fi
 
-apt update && apt upgrade
-apt install curl tar
+apt update -y && apt upgrade -y
+apt install -y curl tar
 
-apt install build-essential \
+apt install -y build-essential \
   autoconf \
   automake \
   make \
@@ -28,7 +28,7 @@ apt install build-essential \
   g++ \
   perl
 
-apt install init-system-helpers \
+apt install -y init-system-helpers \
   adduser \
   libc6 \
   libcap2 \
@@ -71,7 +71,7 @@ curl -o squid.tar.gz $1
 rm -rf ./squid
 mkdir ./squid && tar xvf squid.tar.gz -C ./squid --strip-components 1
 cd ./squid
-
+./bootstrap.sh
 ./configure --prefix=/usr \
   --localstatedir=/var \
   --libexecdir=/usr/lib/squid \
@@ -79,6 +79,7 @@ cd ./squid
   --sysconfdir=/etc/squid \
   --with-default-user=proxy \
   --with-logdir=/var/log/squid \
+  --with-swapdir=/var/spool/squid \
   --with-pidfile=/run/squid.pid \
   --enable-ssl \
   --enable-security-file-certgen \
@@ -89,3 +90,13 @@ cd ./squid
   --enable-icmp
 make
 make install
+
+chmo 4755 /usr/lib/squid/pinger
+chown -R proxy:proxy /var/log/squid
+
+sed -i '/cache_dir/s/^#//g' /etc/squid/squid.conf
+chown proxy:proxy /var/spool/squid
+chown -R proxy:proxy /var/log/squid
+
+cp ./usr.sbin.squid /etc/apparmor.d/
+touch /etc/apparmor.d/local/usr.sbin.squid
