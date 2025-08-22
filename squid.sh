@@ -70,8 +70,18 @@ apt install -y init-system-helpers \
   apparmor
 
 curl -o squid.tar.gz $1
+curl -o c-icap.tar.gz https://codeload.github.com/c-icap/c-icap-server/tar.gz/refs/tags/C_ICAP_0.6.4
 rm -rf ./squid
+rm -rf ./c-icap
 mkdir ./squid && tar xvf squid.tar.gz -C ./squid --strip-components 1
+mkdir ./c-icap && tar xvf c-icap.tar.gz -C ./c-icap --strip-components 1
+cd ./c-icap
+autoreconf -ifv .
+./configure
+make
+make install
+cd ..
+
 cd ./squid
 ./bootstrap.sh
 ./configure --prefix=/usr \
@@ -151,6 +161,21 @@ chown -R proxy:proxy /var/spool/squid
 
 sed -i '/ssl_bump bump all/asslcrtd_program \/usr\/lib\/squid\/security_file_certgen -s \/var\/lib\/ssl_db -M 4MB' /etc/squid/squid.conf
 sed -i '/ssl_bump bump all/asslcrtd_children 3 startup=1 idle=1' /etc/squid/squid.conf
+
+sed -i '/ssl_bump bump all/aicap_preview_size 1024' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aicap_preview_enable on' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aicap_service_failure_limit -1' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aadaptation_access srv_req allow all' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aadaptation_access srv_resp allow all' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aicap_service srv_req reqmod_precache 0 icap:\/\/127.0.0.1:1344\/echo' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aicap_service srv_resp respmod_precache 0 icap:\/\/127.0.0.1:1344\/echo' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aadaptation_send_client_ip on' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aadaptation_send_username on' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aicap_enable on' /etc/squid/squid.conf
+
+#
+
+#
 
 systemctl enable squid
 systemctl start squid
