@@ -132,5 +132,19 @@ cp ../squid.service /etc/systemd/system/
 cp ../ssl-cert.service /etc/systemd/system/
 systemctl daemon-reload
 
+sed -i 's/3128$/3128 ssl-bump cert=\/etc\/squid\/cert\/squidCA.pem generate-host-certificates=on options=NO_SSLv3,NO_TLSv1,NO_TLSv1_1/g' /etc/squid/squid.conf
+sed '/http_port 3128/a ssl_bump bump all' /etc/squid/squid.conf
+
+mkdir -p /etc/squid/cert/
+chown proxy:proxy /etc/squid/cert
+openssl req -new -newkey rsa:4096 -sha256 -days 365 -nodes -x509 \
+  -keyout /etc/squid/cert/squidCA.pem \
+  -out /etc/squid/cert/squidCA.pem \
+  -subj "/C=IL/ST=IL/L=Home/O=Home/OU=Home"
+chmod 0400 /etc/squid/cert/squidCA.pem
+mkdir -p /usr/local/share/ca-certificates
+openssl x509 -inform PEM -in /etc/squid/cert/squidCA.pem -out /usr/local/share/ca-certificates/squidCA.crt
+update-ca-certificates
+
 systemctl enable squid
 systemctl start squid
