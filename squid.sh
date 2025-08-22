@@ -112,10 +112,11 @@ chown -R proxy:proxy /var/log/squid
 
 sed -i 's/\/var\/cache\/squid/\/var\/spool\/squid/g' /etc/squid/squid.conf
 sed -i '/cache_dir/s/^#//g' /etc/squid/squid.conf
+mkdir -p /var/spool/squid
 chown proxy:proxy /var/spool/squid
 chown -R proxy:proxy /var/log/squid
 
-mkdir /etc/squid/conf.d
+mkdir -p /etc/squid/conf.d
 touch /etc/squid/conf.d/debian.conf
 echo "" >>/etc/squid/squid.conf
 echo "include /etc/squid/conf.d/*.conf" >>/etc/squid/squid.conf
@@ -130,3 +131,6 @@ update-rc.d squid defaults
 cp ../squid.service /etc/systemd/system/
 cp ../ssl-cert.service /etc/systemd/system/
 systemctl daemon-reload
+
+systemctl enable squid
+systemctl start squid
