@@ -156,11 +156,14 @@ sed -i '/cache_dir/s/^#//g' /etc/squid/squid.conf
 echo "" >>/etc/squid/squid.conf
 echo "include /etc/squid/conf.d/*.conf" >>/etc/squid/squid.conf
 
-sed -i 's/3128$/3128 ssl-bump cert=\/etc\/squid\/cert\/squidCA.pem generate-host-certificates=on options=NO_SSLv3,NO_TLSv1,NO_TLSv1_1/g' /etc/squid/squid.conf
-sed -i '/http_port 3128/a ssl_bump bump all' /etc/squid/squid.conf
+sed -i 's/http_port 3128$/3128 ssl-bump cert=\/etc\/squid\/cert\/squidCA.pem generate-host-certificates=on dynamic_cert_mem_cache_size=4MB/g' /etc/squid/squid.conf
+sed -i 's/http_access deny all$//' /etc/squid/squid.conf
+sed -i '/http_port 3128/assl_bump bump all' /etc/squid/squid.conf
+sed -i '/http_port 3128/assl_bump peek step1' /etc/squid/squid.conf
+sed -i '/http_port 3128/aacl step1 at_step SslBump1' /etc/squid/squid.conf
 
-sed -i '/ssl_bump bump all/asslcrtd_program \/usr\/lib\/squid\/security_file_certgen -s \/var\/spool\/squid\/ssl_db -M 4MB' /etc/squid/squid.conf
-sed -i '/ssl_bump bump all/asslcrtd_children 3 startup=1 idle=1' /etc/squid/squid.conf
+sed -i '/http_port 3128/asslcrtd_program \/usr\/lib\/squid\/security_file_certgen -s \/var\/spool\/squid\/ssl_db -M 4MB' /etc/squid/squid.conf
+sed -i '/http_port 3128/asslcrtd_children 4 startup=2 idle=2' /etc/squid/squid.conf
 
 sed -i '/ssl_bump bump all/aicap_preview_size 0' /etc/squid/squid.conf
 sed -i '/ssl_bump bump all/aicap_preview_enable on' /etc/squid/squid.conf
@@ -178,9 +181,8 @@ sed -i '/ssl_bump bump all/aicap_enable on' /etc/squid/squid.conf
 cd ..
 
 sed -i 's/MaxMemObject 131072/MaxMemObject 1048576/' /usr/local/c-icap/etc/c-icap.conf
-sed -i 's/DebugLevel 1/DebugLevel 10/' /usr/local/c-icap/etc/c-icap.conf
-sed -i '/Service echo srv_echo.so/aService squidclam squidclamav.so' /usr/local/c-icap/etc/c-icap.conf
-
+sed -i 's/ServerName YourServerName/ServerName squid-icap/' /usr/local/c-icap/etc/c-icap.conf
+#sed -i '/Service echo srv_echo.so/aService squidclam squidclamav.so' /usr/local/c-icap/etc/c-icap.conf
 sed -i 's/\/var\/run\/clamav\/clamd.ctl/\/run\/clamav\/clamd.ctl/' /usr/local/c-icap/etc/squidclamav.conf
 sed -i 's/maxsize 5M/maxsize 5000000/' /usr/local/c-icap/etc/squidclamav.conf
 sed -i 's/banmaxsize 2M//' /usr/local/c-icap/etc/squidclamav.conf
