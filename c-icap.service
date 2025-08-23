@@ -1,0 +1,14 @@
+[Unit]
+Description=ICAP server
+
+[Service]
+EnvironmentFile=-/usr/local/c-icap/etc/
+Type=forking
+ExecStartPre=/bin/mkdir -p /run/c-icap
+ExecStartPre=/bin/chown c-icap:c-icap /run/c-icap
+ExecStart=/usr/local/c-icap/bin/c-icap
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target
