@@ -159,22 +159,32 @@ echo "include /etc/squid/conf.d/*.conf" >>/etc/squid/squid.conf
 sed -i 's/3128$/3128 ssl-bump cert=\/etc\/squid\/cert\/squidCA.pem generate-host-certificates=on options=NO_SSLv3,NO_TLSv1,NO_TLSv1_1/g' /etc/squid/squid.conf
 sed -i '/http_port 3128/a ssl_bump bump all' /etc/squid/squid.conf
 
-sed -i '/ssl_bump bump all/asslcrtd_program \/usr\/lib\/squid\/security_file_certgen -s \/var\/lib\/ssl_db -M 4MB' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/asslcrtd_program \/usr\/lib\/squid\/security_file_certgen -s \/var\/spool\/squid\/ssl_db -M 4MB' /etc/squid/squid.conf
 sed -i '/ssl_bump bump all/asslcrtd_children 3 startup=1 idle=1' /etc/squid/squid.conf
 
-sed -i '/ssl_bump bump all/aicap_preview_size 1024' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aicap_preview_size 0' /etc/squid/squid.conf
 sed -i '/ssl_bump bump all/aicap_preview_enable on' /etc/squid/squid.conf
 sed -i '/ssl_bump bump all/aicap_service_failure_limit -1' /etc/squid/squid.conf
 sed -i '/ssl_bump bump all/aadaptation_access srv_req allow all' /etc/squid/squid.conf
 sed -i '/ssl_bump bump all/aadaptation_access srv_resp allow all' /etc/squid/squid.conf
-sed -i '/ssl_bump bump all/aicap_service srv_req reqmod_precache 0 icap:\/\/127.0.0.1:1344\/squidclamav' /etc/squid/squid.conf
-sed -i '/ssl_bump bump all/aicap_service srv_resp respmod_precache 0 icap:\/\/127.0.0.1:1344\/squidclamav' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aicap_service srv_req reqmod_precache 0 icap:\/\/127.0.0.1:1344\/squidclam' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aicap_service srv_resp respmod_precache 0 icap:\/\/127.0.0.1:1344\/squidclam' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aicap_client_username_encode off' /etc/squid/squid.conf
 sed -i '/ssl_bump bump all/aadaptation_send_client_ip on' /etc/squid/squid.conf
 sed -i '/ssl_bump bump all/aadaptation_send_username on' /etc/squid/squid.conf
 sed -i '/ssl_bump bump all/aicap_enable on' /etc/squid/squid.conf
 ##### squid conf settings
 
 cd ..
+
+sed -i 's/MaxMemObject 131072/MaxMemObject 1048576/' /usr/local/c-icap/etc/c-icap.conf
+sed -i 's/DebugLevel 1/DebugLevel 10/' /usr/local/c-icap/etc/c-icap.conf
+sed -i '/Service echo srv_echo.so/aService squidclam squidclamav.so' /usr/local/c-icap/etc/c-icap.conf
+
+sed -i 's/\/var\/run\/clamav\/clamd.ctl/\/run\/clamav\/clamd.ctl/' /usr/local/c-icap/etc/squidclamav.conf
+sed -i 's/maxsize 5M/maxsize 5000000/' /usr/local/c-icap/etc/squidclamav.conf
+sed -i 's/banmaxsize 2M//' /usr/local/c-icap/etc/squidclamav.conf
+sed -i 's/enable_libarchive 0//' /usr/local/c-icap/etc/squidclamav.conf
 
 cp ./usr.sbin.squid /etc/apparmor.d/
 touch /etc/apparmor.d/local/usr.sbin.squid
@@ -193,6 +203,9 @@ cp ./squid.service /etc/systemd/system/
 cp ./ssl-cert.service /etc/systemd/system/
 cp ./c-icap.service /usr/lib/systemd/system/
 systemctl daemon-reload
+
+systemctl enable clamav-daemon
+systemctl start clamav-daemon
 
 systemctl enable c-icap
 systemctl start c-icap
