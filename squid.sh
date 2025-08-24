@@ -67,19 +67,29 @@ apt-get install -y clamav-daemon \
 #Change urls based on version
 curl -o squid.tar.gz https://codeload.github.com/squid-cache/squid/tar.gz/refs/tags/SQUID_7_0_2
 curl -o c-icap.tar.gz https://codeload.github.com/c-icap/c-icap-server/tar.gz/refs/tags/C_ICAP_0.6.4
+curl -o c-icap-modules.tar.gz https://codeload.github.com/c-icap/c-icap-modules/tar.gz/refs/tags/C_ICAP_MODULES_0.5.7
 curl -o squidclamav.tar.gz https://codeload.github.com/darold/squidclamav/tar.gz/refs/tags/v7.4
 
 rm -rf ./squid
 rm -rf ./c-icap
+rm -rf ./c-icap-modules
 rm -rf ./squidclamav
 
 mkdir ./squid && tar xvf squid.tar.gz -C ./squid --strip-components 1
 mkdir ./squidclamav && tar xvf squidclamav.tar.gz -C ./squidclamav --strip-components 1
 mkdir ./c-icap && tar xvf c-icap.tar.gz -C ./c-icap --strip-components 1
+mkdir ./c-icap-modules && tar xvf c-icap-modules.tar.gz -C ./c-icap-modules --strip-components 1
 
 cd ./c-icap
 autoreconf -ifv .
 ./configure --prefix=/usr/local/c-icap
+make
+make install
+cd ..
+
+cd ./c-icap-modules
+autoreconf -ifv .
+./configure --with-c-icap=/usr/local/c-icap --prefix=/usr/local/c-icap
 make
 make install
 cd ..
@@ -156,7 +166,7 @@ sed -i '/cache_dir/s/^#//g' /etc/squid/squid.conf
 echo "" >>/etc/squid/squid.conf
 echo "include /etc/squid/conf.d/*.conf" >>/etc/squid/squid.conf
 
-sed -i 's/http_port 3128$/3128 ssl-bump cert=\/etc\/squid\/cert\/squidCA.pem generate-host-certificates=on dynamic_cert_mem_cache_size=4MB/g' /etc/squid/squid.conf
+sed -i 's/http_port 3128$/http_port 3128 ssl-bump cert=\/etc\/squid\/cert\/squidCA.pem generate-host-certificates=on dynamic_cert_mem_cache_size=4MB/g' /etc/squid/squid.conf
 sed -i 's/http_access deny all$//' /etc/squid/squid.conf
 sed -i '/http_port 3128/assl_bump bump all' /etc/squid/squid.conf
 sed -i '/http_port 3128/assl_bump peek step1' /etc/squid/squid.conf
@@ -165,14 +175,14 @@ sed -i '/http_port 3128/aacl step1 at_step SslBump1' /etc/squid/squid.conf
 sed -i '/http_port 3128/asslcrtd_program \/usr\/lib\/squid\/security_file_certgen -s \/var\/spool\/squid\/ssl_db -M 4MB' /etc/squid/squid.conf
 sed -i '/http_port 3128/asslcrtd_children 4 startup=2 idle=2' /etc/squid/squid.conf
 
-sed -i '/ssl_bump bump all/aicap_preview_size 0' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aicap_preview_size 1024' /etc/squid/squid.conf
 sed -i '/ssl_bump bump all/aicap_preview_enable on' /etc/squid/squid.conf
 sed -i '/ssl_bump bump all/aicap_service_failure_limit -1' /etc/squid/squid.conf
-sed -i '/ssl_bump bump all/aadaptation_access srv_req allow all' /etc/squid/squid.conf
-sed -i '/ssl_bump bump all/aadaptation_access srv_resp allow all' /etc/squid/squid.conf
-sed -i '/ssl_bump bump all/aicap_service srv_req reqmod_precache 0 icap:\/\/127.0.0.1:1344\/squidclam' /etc/squid/squid.conf
-sed -i '/ssl_bump bump all/aicap_service srv_resp respmod_precache 0 icap:\/\/127.0.0.1:1344\/squidclam' /etc/squid/squid.conf
-sed -i '/ssl_bump bump all/aicap_client_username_encode off' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aadaptation_access service_avi_req allow all' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aadaptation_access service_avi_resp allow all' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aicap_service service_avi_req reqmod_precache icap:\/\/localhost:1344\/squidclam bypass=on' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aicap_service service_avi_resp respmod_precache icap:\/\/localhost:1344\/squidclam bypass=off' /etc/squid/squid.conf
+sed -i '/ssl_bump bump all/aicap_client_username_header X-Authenticated-User' /etc/squid/squid.conf
 sed -i '/ssl_bump bump all/aadaptation_send_client_ip on' /etc/squid/squid.conf
 sed -i '/ssl_bump bump all/aadaptation_send_username on' /etc/squid/squid.conf
 sed -i '/ssl_bump bump all/aicap_enable on' /etc/squid/squid.conf
@@ -182,7 +192,6 @@ cd ..
 
 sed -i 's/MaxMemObject 131072/MaxMemObject 1048576/' /usr/local/c-icap/etc/c-icap.conf
 sed -i 's/ServerName YourServerName/ServerName squid-icap/' /usr/local/c-icap/etc/c-icap.conf
-#sed -i '/Service echo srv_echo.so/aService squidclam squidclamav.so' /usr/local/c-icap/etc/c-icap.conf
 sed -i 's/\/var\/run\/clamav\/clamd.ctl/\/run\/clamav\/clamd.ctl/' /usr/local/c-icap/etc/squidclamav.conf
 sed -i 's/maxsize 5M/maxsize 5000000/' /usr/local/c-icap/etc/squidclamav.conf
 sed -i 's/banmaxsize 2M//' /usr/local/c-icap/etc/squidclamav.conf
@@ -218,9 +227,8 @@ systemctl start squid
 echo ""
 echo ""
 echo ""
-echo "c-icap prefix DIR: /usr/local/lib/c-icap"
+echo "CA cert: /etc/squid/cert/squidCA.pem "
 echo ""
-echo "CA cert in /etc/squid/cert/squidCA.pem "
 echo "squid working directories:"
 echo "    /usr"
 echo "    /var"
@@ -232,3 +240,5 @@ echo "    /run/squid.pid"
 echo "    /usr/include"
 echo "    /usr/share/man"
 echo "    /share/info"
+echo "c-icap working directories:"
+echo "    /usr/loca/c-icap"
